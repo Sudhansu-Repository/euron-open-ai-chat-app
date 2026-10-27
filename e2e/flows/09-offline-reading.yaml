@@ -1,0 +1,29 @@
+# Android only: a chat opened once can be read with no network; the composer says why it
+# cannot send.
+appId: com.example.openchat
+name: 09-offline-reading
+tags: [offline, android]
+---
+- runFlow: common/fresh-start.yaml
+- runFlow:
+    file: common/sign-in.yaml
+    env:
+      DEMO_EMAIL: "leo.marquez@example.com"
+- runFlow:
+    file: common/ask.yaml
+    env:
+      QUESTION: "Explain tides to a child"
+- extendedWaitUntil:
+    visible:
+      id: "message-copy"
+    timeout: 20000
+- setAirplaneMode: enabled
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "composer-offline"
+    timeout: 20000
+- assertVisible:
+    id: "message-assistant"
+- setAirplaneMode: disabled

@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
+  <title id="title">App architecture</title>
+  <desc id="desc">The app has five layers: the app shell (providers, navigator, session, server meta, the persisted query cache, deep links, the update gate), feature folders (chat with the turn runner and the markdown renderer, voice, images, projects, settings, push), the API client vendored from euron-open-ai-chat, a small UI kit and a lib folder. The refresh token and the server it belongs to live in the Keychain or Keystore; preferences, the cached server meta and the offline query cache of at most 2 MB live in MMKV. The app talks to one euron-open-ai-chat API over HTTPS with X-Client native and a bearer token, uploads file bytes straight to object storage on presigned URLs, receives "your answer is ready" pushes through FCM and APNs, and opens links in the in-app browser.</desc>
+  <style>
+    .bg { fill: #f8fafc; }
+    .box { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.2; }
+    .acc { fill: #ecfafc; stroke: #0E99AD; stroke-width: 1.6; }
+    .zone { fill: none; stroke: #94a3b8; stroke-width: 1.2; stroke-dasharray: 6 5; }
+    .h { font: 600 20px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+    .t { font: 600 15px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+    .s { font: 13px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #475569; }
+    .m { font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #0f172a; }
+    .k { font: 600 13px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0b7f90; }
+    .ln { stroke: #64748b; stroke-width: 1.5; fill: none; }
+    .ld { stroke: #64748b; stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
+    .la { stroke: #0E99AD; stroke-width: 1.8; fill: none; }
+    .ah { fill: #64748b; }
+    .aa { fill: #0E99AD; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0b1220; }
+      .box { fill: #111a2b; stroke: #2b3a55; }
+      .acc { fill: #0d2a33; stroke: #22b8cc; }
+      .zone { stroke: #475569; }
+      .h, .t, .m { fill: #e2e8f0; }
+      .s { fill: #94a3b8; }
+      .k { fill: #5fd3e3; }
+      .ln, .ld { stroke: #7c8aa5; }
+      .ah { fill: #7c8aa5; }
+      .la { stroke: #22b8cc; }
+      .aa { fill: #22b8cc; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0L10 5L0 10z"/></marker>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="aa" d="M0 0L10 5L0 10z"/></marker>
+  </defs>
+  <rect class="bg" width="1200" height="680" rx="14"/>
+  <text class="h" x="40" y="48">App architecture</text>
+  <text class="s" x="40" y="72">One React Native codebase for iOS and Android. One server at a time; the server decides everything, the app keeps only what it needs on the device.</text>
+
+  <!-- The app -->
+  <rect class="zone" x="40" y="96" width="600" height="556" rx="14"/>
+  <text class="k" x="56" y="120">THE APP (bare React Native CLI 0.87, TypeScript strict)</text>
+
+  <rect class="acc" x="60" y="134" width="560" height="74" rx="10"/>
+  <text class="t" x="76" y="158">App shell</text>
+  <text class="m" x="200" y="158">App.tsx, src/app/</text>
+  <text class="s" x="76" y="180">providers, Navigator (auth stack or drawer), session, /api/meta features,</text>
+  <text class="s" x="76" y="198">query client with offline persistence, deep links, update gate</text>
+
+  <rect class="box" x="60" y="220" width="560" height="96" rx="10"/>
+  <text class="t" x="76" y="244">Features</text>
+  <text class="m" x="200" y="244">src/features/</text>
+  <text class="s" x="76" y="266">chat: turn-runner (send, follow, hand-off, resume), markdown renderer,</text>
+  <text class="s" x="76" y="286">composer, model picker, sidebar, sources · voice · images · projects</text>
+  <text class="s" x="76" y="306">settings (account, memory, shared links, devices, data) · push</text>
+
+  <rect class="box" x="60" y="328" width="560" height="64" rx="10"/>
+  <text class="t" x="76" y="352">API client</text>
+  <text class="m" x="200" y="352">src/api/client.ts + vendor/</text>
+  <text class="s" x="76" y="374">types and @open-chat/api-client copied verbatim, native token mode, XHR streams</text>
+
+  <rect class="box" x="60" y="404" width="270" height="64" rx="10"/>
+  <text class="t" x="76" y="428">UI kit</text>
+  <text class="m" x="140" y="428">src/ui/</text>
+  <text class="s" x="76" y="450">tokens mirrored from the web</text>
+  <rect class="box" x="350" y="404" width="270" height="64" rx="10"/>
+  <text class="t" x="366" y="428">Lib</text>
+  <text class="m" x="404" y="428">src/lib/</text>
+  <text class="s" x="366" y="450">server, push, secure store, prefs</text>
+
+  <text class="k" x="56" y="500">ON THE DEVICE</text>
+  <rect class="box" x="60" y="512" width="270" height="120" rx="10"/>
+  <text class="t" x="76" y="536">Keychain / Keystore</text>
+  <text class="s" x="76" y="560">refresh token, its expiry and the</text>
+  <text class="s" x="76" y="580">server that issued it</text>
+  <text class="s" x="76" y="604">after first unlock, this device only</text>
+  <rect class="box" x="350" y="512" width="270" height="120" rx="10"/>
+  <text class="t" x="366" y="536">MMKV</text>
+  <text class="s" x="366" y="560">theme, server in use, cached meta,</text>
+  <text class="s" x="366" y="580">push token, offline query cache</text>
+  <text class="s" x="366" y="604">(at most 2 MB, wiped on sign-out)</text>
+  <path class="ln" d="M180 468 L180 512" marker-end="url(#a)"/>
+  <path class="ln" d="M470 468 L470 512" marker-end="url(#a)"/>
+
+  <!-- The server -->
+  <rect class="acc" x="760" y="134" width="400" height="250" rx="14"/>
+  <text class="t" x="776" y="160">euron-open-ai-chat API</text>
+  <text class="s" x="776" y="182">one at a time: API_BASE_URL or the welcome screen</text>
+  <text class="m" x="776" y="212">GET  /api/meta</text>
+  <text class="s" x="940" y="212">name, features, limits</text>
+  <text class="m" x="776" y="236">POST /api/auth/*</text>
+  <text class="s" x="940" y="236">native token mode</text>
+  <text class="m" x="776" y="260">POST /api/chats/:id/messages</text>
+  <text class="s" x="1030" y="260">202</text>
+  <text class="m" x="776" y="284">GET  /api/turns/:id/events</text>
+  <text class="s" x="1010" y="284">SSE</text>
+  <text class="m" x="776" y="308">POST /api/turns/:id/notify</text>
+  <text class="m" x="776" y="332">POST /api/files, /speech/*</text>
+  <text class="m" x="776" y="356">PUT  /api/me/devices</text>
+
+  <rect class="box" x="760" y="420" width="190" height="84" rx="10"/>
+  <text class="t" x="776" y="446">FCM and APNs</text>
+  <text class="s" x="776" y="468">your answer is ready</text>
+  <text class="s" x="776" y="488">(your Firebase project)</text>
+  <rect class="box" x="970" y="420" width="190" height="84" rx="10"/>
+  <text class="t" x="986" y="446">Object storage</text>
+  <text class="s" x="986" y="468">upload PUT, signed</text>
+  <text class="s" x="986" y="488">file and image URLs</text>
+  <rect class="box" x="760" y="540" width="400" height="80" rx="10"/>
+  <text class="t" x="776" y="566">Web pages</text>
+  <text class="s" x="776" y="588">sources, links in answers, share links:</text>
+  <text class="s" x="776" y="606">opened in the in-app browser, http and https only</text>
+
+  <!-- Flows -->
+  <path class="la" d="M620 360 L700 360 L700 250 L758 250" marker-end="url(#b)"/>
+  <text class="k" x="648" y="178">HTTPS</text>
+  <text class="s" x="648" y="196">X-Client:</text>
+  <text class="s" x="648" y="214">native,</text>
+  <text class="s" x="648" y="232">bearer</text>
+  <path class="ln" d="M855 384 L855 418" marker-end="url(#a)"/>
+  <path class="ld" d="M760 476 L730 476 L730 300 L622 300" marker-end="url(#a)"/>
+  <text class="s" x="648" y="470">push</text>
+  <path class="ln" d="M620 380 L680 380 L680 404 L1065 404 L1065 418" marker-end="url(#a)"/>
+  <text class="s" x="1078" y="414">bytes</text>
+  <path class="ln" d="M640 580 L758 580" marker-end="url(#a)"/>
+</svg>

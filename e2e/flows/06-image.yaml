@@ -1,0 +1,30 @@
+# Image mode draws a picture in the chat; it opens full screen and shows in Images.
+appId: com.example.openchat
+name: 06-image
+tags: [images]
+---
+- runFlow: common/fresh-start.yaml
+- runFlow:
+    file: common/sign-in.yaml
+    env:
+      DEMO_EMAIL: "leo.marquez@example.com"
+- tapOn:
+    id: "composer-image"
+- runFlow:
+    file: common/ask.yaml
+    env:
+      QUESTION: "A lighthouse at dusk"
+- extendedWaitUntil:
+    visible:
+      id: "generated-image"
+    timeout: 30000
+- tapOn:
+    id: "generated-image"
+- assertVisible:
+    id: "image-viewer"
+- tapOn: "Close"
+- tapOn: "Open the sidebar"
+- tapOn:
+    id: "sidebar-images"
+- assertVisible:
+    id: "image-tile"

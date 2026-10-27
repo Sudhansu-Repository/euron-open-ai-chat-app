@@ -1,0 +1,9 @@
+# Types a message into the composer and sends it. QUESTION comes from runFlow env.
+appId: com.example.openchat
+---
+- tapOn:
+    id: "composer-input"
+- inputText: ${QUESTION}
+- hideKeyboard
+- tapOn:
+    id: "composer-send"

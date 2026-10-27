@@ -1,0 +1,28 @@
+# Settings opens from the sidebar; signing out returns to the welcome screen and forgets
+# the cached chats.
+appId: com.example.openchat
+name: 10-settings-sign-out
+tags: [settings]
+---
+- runFlow: common/fresh-start.yaml
+- runFlow:
+    file: common/sign-in.yaml
+    env:
+      DEMO_EMAIL: "sam.kowalski@example.com"
+- tapOn: "Open the sidebar"
+- tapOn:
+    id: "sidebar-settings"
+- assertVisible:
+    id: "settings-screen"
+- tapOn:
+    id: "settings-personalization"
+- assertVisible:
+    id: "settings-personalization-screen"
+- back
+- tapOn:
+    id: "settings-sign-out"
+- tapOn: "Sign out"
+- extendedWaitUntil:
+    visible:
+      id: "welcome"
+    timeout: 10000

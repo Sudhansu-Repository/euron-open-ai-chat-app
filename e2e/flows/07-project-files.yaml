@@ -1,0 +1,30 @@
+# A project with instructions; a chat started inside it answers from its files when asked.
+appId: com.example.openchat
+name: 07-project-files
+tags: [projects]
+---
+- runFlow: common/fresh-start.yaml
+- runFlow:
+    file: common/sign-in.yaml
+    env:
+      DEMO_EMAIL: "priya.nair@example.com"
+- tapOn: "Open the sidebar"
+- tapOn:
+    id: "sidebar-projects"
+- tapOn: "New project"
+- tapOn:
+    id: "project-name"
+- inputText: "Field notes"
+- tapOn:
+    id: "project-create"
+- assertVisible:
+    id: "project-screen"
+- tapOn:
+    id: "project-instructions"
+- inputText: "Answer in one short paragraph."
+- hideKeyboard
+- tapOn:
+    id: "project-save"
+- tapOn:
+    id: "project-new-chat"
+- assertVisible: "New chat in Field notes"

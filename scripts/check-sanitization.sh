@@ -1,0 +1,182 @@
+#!/usr/bin/env bash
+# Fail if the tree contains anything that must never be published: cloud
+# credentials, private keys, real account ids or resource ids, real email
+# addresses, public IP addresses, internal hostnames, committed env files,
+# Firebase config or signing material. Also enforces two house rules: no em
+# dash character anywhere, and the brand name only in product and repository
+# names (plus the README, LICENSE, package.json and the brand assets). Generic
+# patterns only; runs in CI on every push.
+#
+#   scripts/check-sanitization.sh [dir]     (default: repo root)
+set -uo pipefail
+
+ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+cd "$ROOT" || exit 2
+
+EXCLUDES=(--exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.turbo
+  --exclude-dir=.terraform --exclude-dir=coverage --exclude-dir=samples --exclude=pnpm-lock.yaml
+  --exclude=check-sanitization.sh --exclude=.gitleaks.toml --exclude=*.lock.hcl --exclude=*.tfstate*
+  --exclude=*.png --exclude=*.jpg --exclude=*.webp --exclude=*.gif --exclude=*.mp4 --exclude=*.ico)
+
+# Inside a git checkout, scan exactly the files git would commit (tracked plus
+# untracked-but-not-ignored). That honors .gitignore by construction, so local
+# state (deploy/compose/.env, terraform.tfstate, scratch dirs) is never in scope
+# and nothing new slips past a hand-maintained exclude list. Outside git, fall
+# back to a recursive grep with EXCLUDES.
+FILES=()
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  while IFS= read -r -d '' f; do
+    case "$f" in
+      pnpm-lock.yaml | scripts/check-sanitization.sh | .gitleaks.toml | *.lock.hcl | \
+        *.png | *.jpg | *.webp | *.gif | *.mp4 | *.ico) continue ;;
+    esac
+    [[ -f "$f" ]] && FILES+=("$f")
+  done < <(git ls-files -z --cached --others --exclude-standard)
+fi
+
+failed=0
+check() { # label, extended-regex, [allow-regex]
+  local label="$1" pattern="$2" allow="${3:-}" hits
+  if ((${#FILES[@]})); then
+    hits="$(printf '%s\0' "${FILES[@]}" | xargs -0 grep -nIHE -- "$pattern" 2>/dev/null || true)"
+  else
+    hits="$(grep -rnIE "${EXCLUDES[@]}" -- "$pattern" . 2>/dev/null || true)"
+  fi
+  if [[ -n "$allow" && -n "$hits" ]]; then hits="$(grep -viE -- "$allow" <<<"$hits" || true)"; fi
+  if [[ -n "$hits" ]]; then
+    printf '\n\033[31m✗ %s\033[0m\n%s\n' "$label" "$(head -20 <<<"$hits")"
+    failed=1
+  fi
+}
+
+check "AWS access key id" '\b(AKIA|ASIA)[0-9A-Z]{16}\b'
+check "Private key block" '-----BEGIN ([A-Z]+ )?PRIVATE KEY-----' '\.example:|PRIVATE KEY-----\\n\.\.\.\\n'
+# 000000000000 is the emulator's account and 123456789012 the documentation placeholder;
+# UUIDs, hashes and lockfile integrity strings carry long digit runs legitimately.
+check "12-digit number (possible AWS account id)" '(^|[^0-9.])[0-9]{12}([^0-9]|$)' '000000000000|123456789012|[0-9a-f]{8}-[0-9a-f]{4}|sha|integrity|[0-9A-Fa-f]{24}|: [0-9a-f]{40}$'
+check "AWS resource id" '\b(ami|subnet|sg|vpc|pcx|rtb|igw|eni|vol|snap)-[0-9a-f]{8,17}\b' '-(0{8,17}|x+)\b'
+check "RDS endpoint" '\.[a-z0-9]{12}\.[a-z0-9-]+\.rds\.amazonaws\.com'
+check "Slack/GitHub/OpenAI style token" '\b(xox[baprs]-[0-9A-Za-z-]{10,}|gh[pousr]_[0-9A-Za-z]{36}|sk_live_[0-9A-Za-z]{24,}|sk-(proj-)?[A-Za-z0-9_-]{32,})\b'
+# Model and search provider keys the server uses: none of them belong in a client, so any
+# real-looking one here is a leak. Test fixtures must stay short or visibly fake.
+check "Model/search provider key" '\b(sk-ant-[A-Za-z0-9_-]{32,}|gsk_[0-9A-Za-z]{40,}|tvly-[0-9A-Za-z_-]{24,}|hf_[0-9A-Za-z]{30,}|r8_[0-9A-Za-z]{30,})\b'
+# Email addresses: only the reserved example domains and TLDs (.test, .example, .invalid:
+# RFC 2606) and localhost. Real people's and companies' addresses never belong in the tree.
+check "Email address outside the reserved example domains" \
+  '[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}\b' \
+  '@([A-Za-z0-9-]+\.)*example\.(com|test|org|net)\b|@([A-Za-z0-9-]+\.)+(test|example|invalid)\b|@localhost\b|@users\.noreply\.github\.com\b'
+
+# Public IPv4 addresses. Allowed: private (10/8, 172.16/12, 192.168/16), loopback,
+# link-local, CGNAT, unspecified/broadcast, and the documentation ranges (RFC 5737).
+ip_hits() {
+  local raw
+  if ((${#FILES[@]})); then
+    raw="$(printf '%s\0' "${FILES[@]}" | xargs -0 grep -onIHE -- '(^|[^0-9.])([0-9]{1,3}\.){3}[0-9]{1,3}([^0-9.]|$)' 2>/dev/null || true)"
+  else
+    raw="$(grep -ronIE "${EXCLUDES[@]}" -- '(^|[^0-9.])([0-9]{1,3}\.){3}[0-9]{1,3}([^0-9.]|$)' . 2>/dev/null || true)"
+  fi
+  [[ -z "$raw" ]] && return 0
+  # Ruby gem versions (Gemfile, Gemfile.lock) look like addresses: 6.1.7.5
+  raw="$(grep -vE '^(\./)?Gemfile(\.lock)?:' <<<"$raw" || true)"
+  [[ -z "$raw" ]] && return 0
+  awk '{
+    line = $0
+    if (match(line, /([0-9]{1,3}\.){3}[0-9]{1,3}/) == 0) next
+    ip = substr(line, RSTART, RLENGTH)
+    split(ip, o, ".")
+    if (o[1] > 255 || o[2] > 255 || o[3] > 255 || o[4] > 255) next
+    if (o[1] == 10 || o[1] == 127 || o[1] == 0 || o[1] == 255) next
+    if (o[1] == 172 && o[2] >= 16 && o[2] <= 31) next
+    if (o[1] == 192 && o[2] == 168) next
+    if (o[1] == 169 && o[2] == 254) next
+    if (o[1] == 100 && o[2] >= 64 && o[2] <= 127) next
+    if (o[1] == 192 && o[2] == 0 && o[3] == 2) next
+    if (o[1] == 198 && o[2] == 51 && o[3] == 100) next
+    if (o[1] == 203 && o[2] == 0 && o[3] == 113) next
+    print line
+  }' <<<"$raw"
+}
+hits="$(ip_hits)"
+if [[ -n "$hits" ]]; then
+  printf '\n\033[31m✗ %s\033[0m\n%s\n' "Public IPv4 address" "$(head -20 <<<"$hits")"
+  failed=1
+fi
+
+# Mobile: Google and Firebase API keys, and the files that carry a real project's
+# identity or signing material. Each deployment brings its own (docs/guides/push.md,
+# docs/guides/release.md); none of them belong in the tree.
+check "Google or Firebase API key" '\bAIza[0-9A-Za-z_-]{35}\b'
+check "Apple team id in a signing setting" '(DEVELOPMENT_TEAM|teamID)["\s=:<>/a-z]*[A-Z0-9]{10}\b' 'DEVELOPMENT_TEAM = ""|teamID</key>'
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  signing="$(git ls-files --cached --others --exclude-standard -- '*google-services.json' '*GoogleService-Info.plist' '*.p12' '*.p8' '*.mobileprovision' '*.jks' '*.keystore' 'android/keystore.properties' | grep -v '^android/app/debug\.keystore$' || true)"
+  if [[ -n "$signing" ]]; then
+    printf '\n\033[31m✗ %s\033[0m\n%s\n' "Firebase config or signing material in the tree" "$signing"
+    failed=1
+  fi
+fi
+
+# Internal hostnames: private DNS zones, cloud-internal names, tunnels. Documentation
+# uses example.com, example.test and localhost instead.
+check "Internal hostname" \
+  '\b[a-z0-9-]+(\.[a-z0-9-]+)*\.(internal|intranet|corp|lan)\b|\bec2-[0-9]+-[0-9]+-[0-9]+-[0-9]+\b|\b[a-z0-9-]+\.(execute-api|elb)\.[a-z0-9-]+\.amazonaws\.com\b|\bd[0-9a-z]{12,14}\.cloudfront\.net\b|\b[a-z0-9-]+\.trycloudflare\.com\b|\b[a-z0-9-]+\.ngrok(-free)?\.(io|app|dev)\b'
+
+# House rule: no em dash (U+2014) anywhere. Use a comma, a colon or a full stop.
+EMDASH="$(printf '\342\200\224')"
+emdash_hits() {
+  if ((${#FILES[@]})); then
+    printf '%s\0' "${FILES[@]}" | LC_ALL=C xargs -0 grep -nIHF -- "$EMDASH" 2>/dev/null || true
+  else
+    LC_ALL=C grep -rnIF "${EXCLUDES[@]}" -- "$EMDASH" . 2>/dev/null || true
+  fi
+}
+hits="$(emdash_hits)"
+if [[ -n "$hits" ]]; then
+  printf '\n\033[31m✗ %s\033[0m\n%s\n' "Em dash character" "$(head -20 <<<"$hits")"
+  failed=1
+fi
+
+# House rule: the brand name appears only as part of the product and repository names
+# ("Euron Open AI Chat", "Euron Open AI Chat App", euron-open-ai-chat, euron-open-ai-chat-app,
+# the euron-sde-team GitHub organisation), except in the README (title and family block),
+# LICENSE, package.json (description) and the brand assets.
+brand_hits() {
+  local raw
+  if ((${#FILES[@]})); then
+    raw="$(printf '%s\0' "${FILES[@]}" | xargs -0 grep -nIHi -- 'euron' 2>/dev/null || true)"
+  else
+    raw="$(grep -rnIi "${EXCLUDES[@]}" -- 'euron' . 2>/dev/null || true)"
+  fi
+  [[ -z "$raw" ]] && return 0
+  raw="$(grep -vE '^(\./)?(README\.md|LICENSE|package\.json|docs/assets/brand/[^:]*|docs/assets/banner\.svg):' <<<"$raw" || true)"
+  [[ -z "$raw" ]] && return 0
+  # Drop the allowed names from the text after "file:line:", then keep lines still naming the brand.
+  awk '{
+    i = index($0, ":"); j = index(substr($0, i + 1), ":"); pre = substr($0, 1, i + j); txt = substr($0, i + j + 1)
+    gsub(/Euron Open AI Chat( App)?/, "", txt)
+    gsub(/euron-open-ai-chat(-app)?/, "", txt)
+    gsub(/euron-sde-team/, "", txt)
+    if (tolower(txt) ~ /euron/) print $0
+  }' <<<"$raw"
+}
+hits="$(brand_hits)"
+if [[ -n "$hits" ]]; then
+  printf '\n\033[31m✗ %s\033[0m\n%s\n' "Brand name outside product and repository names" "$(head -20 <<<"$hits")"
+  failed=1
+fi
+
+# Env files: only *.example may be tracked (and ios/.xcode.env, React Native's Xcode
+# setting that only names the node binary).
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  tracked="$(git ls-files -- '*.env' '.env' '.env.*' '**/.env' '**/.env.*' | grep -v '\.example$' | grep -v '^ios/\.xcode\.env$' || true)"
+  if [[ -n "$tracked" ]]; then
+    printf '\n\033[31m✗ Committed env file(s)\033[0m\n%s\n' "$tracked"
+    failed=1
+  fi
+fi
+
+if [[ $failed -eq 0 ]]; then
+  echo "sanitization: clean"
+else
+  echo; echo "sanitization: FAILED (see above). Replace real values with placeholders."
+fi
+exit $failed

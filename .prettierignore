@@ -1,0 +1,4 @@
+# Copied verbatim from euron-open-ai-chat (scripts/sync-types.mjs); the drift check compares bytes.
+src/api/vendor/
+ios/
+android/

@@ -1,0 +1,27 @@
+# With web search on, the answer shows the search step and cites sources; the sources
+# sheet lists them.
+appId: com.example.openchat
+name: 05-web-search-sources
+tags: [chat, tools]
+---
+- runFlow: common/fresh-start.yaml
+- runFlow:
+    file: common/sign-in.yaml
+    env:
+      DEMO_EMAIL: "leo.marquez@example.com"
+- tapOn:
+    id: "composer-web"
+- runFlow:
+    file: common/ask.yaml
+    env:
+      QUESTION: "Search the latest news about tides"
+- extendedWaitUntil:
+    visible:
+      id: "message-sources"
+    timeout: 20000
+- assertVisible:
+    id: "tool-step"
+- tapOn:
+    id: "message-sources"
+- assertVisible:
+    id: "sources-sheet"

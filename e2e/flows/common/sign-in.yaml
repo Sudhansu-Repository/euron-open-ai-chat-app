@@ -1,0 +1,19 @@
+# Signs in from the welcome screen. DEMO_EMAIL comes from the caller (runFlow env),
+# DEMO_PASSWORD from the command line.
+appId: com.example.openchat
+---
+- tapOn:
+    id: "welcome-signin"
+- tapOn:
+    id: "signin-login"
+- inputText: ${DEMO_EMAIL}
+- tapOn:
+    id: "signin-password"
+- inputText: ${DEMO_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: "signin-submit"
+- extendedWaitUntil:
+    visible:
+      id: "chat-screen"
+    timeout: 20000

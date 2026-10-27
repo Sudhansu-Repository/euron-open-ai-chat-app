@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Release builds: HTTPS only. Debug builds use src/debug's config instead, which allows
+  plain http so the app can reach a local euron-open-ai-chat stack.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

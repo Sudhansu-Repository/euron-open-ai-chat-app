@@ -1,0 +1,10 @@
+# A clean install: no session, no cached chats, no remembered server.
+appId: com.example.openchat
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- extendedWaitUntil:
+    visible:
+      id: "welcome"
+    timeout: 20000

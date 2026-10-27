@@ -1,0 +1,21 @@
+# Maestro workspace config for e2e/flows. Only the top-level flows run; the shared
+# subflows in common/ are called with runFlow and never run on their own.
+#
+# Against a local euron-open-ai-chat with stubs (`make up && make demo` there), so the
+# stub model answers deterministically (apps/stubs/README.md lists the trigger words):
+#   maestro test -e DEMO_PASSWORD=<password printed by make demo> e2e/flows
+flows:
+  - "*"
+executionOrder:
+  continueOnFailure: true
+  flowsOrder:
+    - 01-welcome-and-server
+    - 02-sign-in
+    - 03-chat-stream-regenerate
+    - 04-stop
+    - 05-web-search-sources
+    - 06-image
+    - 07-project-files
+    - 08-share-and-memory
+    - 09-offline-reading
+    - 10-settings-sign-out

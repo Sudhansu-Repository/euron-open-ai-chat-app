@@ -1,0 +1,22 @@
+# The welcome screen shows the server's name and the server in use; a bad address is
+# refused with a reason and the default server stays.
+appId: com.example.openchat
+name: 01-welcome-and-server
+tags: [auth]
+---
+- runFlow: common/fresh-start.yaml
+- assertVisible:
+    id: "welcome-server"
+- tapOn:
+    id: "welcome-server"
+- tapOn:
+    id: "server-input"
+- eraseText: 60
+- inputText: "http://chat.example.com"
+- tapOn:
+    id: "server-submit"
+- assertVisible:
+    id: "server-error"
+- back
+- assertVisible:
+    id: "welcome-signin"

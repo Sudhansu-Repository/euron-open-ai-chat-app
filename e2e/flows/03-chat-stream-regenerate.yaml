@@ -1,0 +1,29 @@
+# Ask, watch the answer stream in with a code block, regenerate it and move between the
+# two versions.
+appId: com.example.openchat
+name: 03-chat-stream-regenerate
+tags: [chat]
+---
+- runFlow: common/fresh-start.yaml
+- runFlow:
+    file: common/sign-in.yaml
+    env:
+      DEMO_EMAIL: "leo.marquez@example.com"
+- runFlow:
+    file: common/ask.yaml
+    env:
+      QUESTION: "Show me some code for adding numbers"
+- extendedWaitUntil:
+    visible:
+      id: "code-block"
+    timeout: 20000
+- assertVisible: "It adds two numbers."
+- tapOn:
+    id: "message-regenerate"
+- extendedWaitUntil:
+    visible:
+      id: "branch-switcher"
+    timeout: 20000
+- assertVisible: "2 / 2"
+- tapOn: "Previous version"
+- assertVisible: "1 / 2"

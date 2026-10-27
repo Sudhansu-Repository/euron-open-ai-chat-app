@@ -1,0 +1,29 @@
+# "Remember" saves a memory that shows in Settings; a chat can be shared as a link.
+appId: com.example.openchat
+name: 08-share-and-memory
+tags: [memory, sharing]
+---
+- runFlow: common/fresh-start.yaml
+- runFlow:
+    file: common/sign-in.yaml
+    env:
+      DEMO_EMAIL: "amara.okafor@example.com"
+- runFlow:
+    file: common/ask.yaml
+    env:
+      QUESTION: "Please remember that I prefer metric units"
+- extendedWaitUntil:
+    visible: "Done. I will remember that."
+    timeout: 20000
+- tapOn:
+    id: "chat-title"
+- assertVisible:
+    id: "chat-share"
+- back
+- tapOn: "Open the sidebar"
+- tapOn:
+    id: "sidebar-settings"
+- tapOn:
+    id: "settings-memory"
+- assertVisible:
+    id: "memory-row"

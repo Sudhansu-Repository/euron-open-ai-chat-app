@@ -1,0 +1,22 @@
+# Stopping a long answer keeps what was written so far.
+appId: com.example.openchat
+name: 04-stop
+tags: [chat]
+---
+- runFlow: common/fresh-start.yaml
+- runFlow:
+    file: common/sign-in.yaml
+    env:
+      DEMO_EMAIL: "leo.marquez@example.com"
+- runFlow:
+    file: common/ask.yaml
+    env:
+      QUESTION: "Write a slow answer please"
+- extendedWaitUntil:
+    visible: "Sentence 2 of a slow answer."
+    timeout: 20000
+- tapOn:
+    id: "composer-stop"
+- extendedWaitUntil:
+    visible: "Stopped."
+    timeout: 10000

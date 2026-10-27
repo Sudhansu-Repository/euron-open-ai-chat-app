@@ -1,0 +1,31 @@
+# A wrong password stays on sign-in with an error; the right one opens the chat, and
+# the session survives a restart (refresh token in the Keychain or Keystore).
+appId: com.example.openchat
+name: 02-sign-in
+tags: [auth]
+---
+- runFlow: common/fresh-start.yaml
+- tapOn:
+    id: "welcome-signin"
+- tapOn:
+    id: "signin-login"
+- inputText: "priya.nair@example.com"
+- tapOn:
+    id: "signin-password"
+- inputText: "not-the-password"
+- hideKeyboard
+- tapOn:
+    id: "signin-submit"
+- assertVisible:
+    id: "signin-error"
+- back
+- runFlow:
+    file: common/sign-in.yaml
+    env:
+      DEMO_EMAIL: "priya.nair@example.com"
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "chat-screen"
+    timeout: 20000

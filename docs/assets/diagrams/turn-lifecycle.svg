@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">A turn from the phone</title>
+  <desc id="desc">The app sends a message and gets 202 with the turn id, writes the question and an empty answer into its cache, then follows the turn's events over XMLHttpRequest from sequence 0. When the app leaves the foreground it aborts the request, the turn keeps running on the server, and if this device is registered for push it calls notify, which arms the turn for an hour. When the answer ends the worker takes the arming key and sends one FCM message per device; the notification says your answer is ready and a tap opens the chat. Back in the foreground the app follows the turn again after the last sequence number it applied, so nothing is lost or applied twice, then refetches the conversation.</desc>
+  <style>
+    .bg { fill: #f8fafc; }
+    .box { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.2; }
+    .acc { fill: #ecfafc; stroke: #0E99AD; stroke-width: 1.6; }
+    .band { fill: #eef2f7; }
+    .life { stroke: #94a3b8; stroke-width: 1.2; stroke-dasharray: 4 5; }
+    .h { font: 600 20px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+    .t { font: 600 15px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+    .s { font: 13px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #475569; }
+    .m { font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #0f172a; }
+    .k { font: 600 13px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0b7f90; }
+    .ln { stroke: #64748b; stroke-width: 1.5; fill: none; }
+    .ld { stroke: #64748b; stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
+    .la { stroke: #0E99AD; stroke-width: 1.8; fill: none; }
+    .ah { fill: #64748b; }
+    .aa { fill: #0E99AD; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0b1220; }
+      .box { fill: #111a2b; stroke: #2b3a55; }
+      .acc { fill: #0d2a33; stroke: #22b8cc; }
+      .band { fill: #111a2b; }
+      .life { stroke: #475569; }
+      .h, .t, .m { fill: #e2e8f0; }
+      .s { fill: #94a3b8; }
+      .k { fill: #5fd3e3; }
+      .ln, .ld { stroke: #7c8aa5; }
+      .ah { fill: #7c8aa5; }
+      .la { stroke: #22b8cc; }
+      .aa { fill: #22b8cc; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0L10 5L0 10z"/></marker>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="aa" d="M0 0L10 5L0 10z"/></marker>
+  </defs>
+  <rect class="bg" width="1200" height="760" rx="14"/>
+  <text class="h" x="40" y="48">A turn from the phone</text>
+  <text class="s" x="40" y="72">src/features/chat/turn-runner.ts. The answer is written on the server whatever happens to the app; the app only decides how it follows it.</text>
+
+  <!-- Lanes -->
+  <rect class="acc" x="60" y="92" width="200" height="40" rx="10"/>
+  <text class="t" x="82" y="117">App (turn runner)</text>
+  <rect class="box" x="420" y="92" width="200" height="40" rx="10"/>
+  <text class="t" x="444" y="117">euron-open-ai-chat API</text>
+  <rect class="box" x="720" y="92" width="200" height="40" rx="10"/>
+  <text class="t" x="738" y="117">Worker, Redis stream</text>
+  <rect class="box" x="980" y="92" width="180" height="40" rx="10"/>
+  <text class="t" x="1022" y="117">FCM, APNs</text>
+  <line class="life" x1="160" y1="132" x2="160" y2="740"/>
+  <line class="life" x1="520" y1="132" x2="520" y2="740"/>
+  <line class="life" x1="820" y1="132" x2="820" y2="740"/>
+  <line class="life" x1="1070" y1="132" x2="1070" y2="740"/>
+
+  <!-- 1. Send -->
+  <text class="k" x="40" y="158">1</text>
+  <path class="ln" d="M162 160 L518 160" marker-end="url(#a)"/>
+  <text class="m" x="176" y="152">POST /api/chats/:id/messages</text>
+  <path class="ln" d="M520 160 L818 160" marker-end="url(#a)"/>
+  <text class="s" x="560" y="152">start the turn</text>
+  <path class="ld" d="M518 188 L164 188" marker-end="url(#a)"/>
+  <text class="m" x="176" y="182">202 { turnId, conversationId, ... }</text>
+  <text class="s" x="176" y="212">question and an empty answer go into the cache at once</text>
+
+  <!-- 2. Follow -->
+  <text class="k" x="40" y="246">2</text>
+  <path class="ln" d="M162 248 L518 248" marker-end="url(#a)"/>
+  <text class="m" x="176" y="240">GET /api/turns/:id/events?after=0</text>
+  <text class="s" x="560" y="240">read the turn's stream</text>
+  <path class="ln" d="M818 252 L522 252" marker-end="url(#a)"/>
+  <path class="la" d="M518 280 L164 280" marker-end="url(#b)"/>
+  <text class="k" x="176" y="274">SSE over XMLHttpRequest: turn.started, message.delta, tool.*, ...</text>
+  <text class="s" x="176" y="300">each event is applied to the cache; lastSeq is remembered</text>
+
+  <!-- 3. Background -->
+  <rect class="band" x="40" y="318" width="1120" height="26" rx="6"/>
+  <text class="k" x="56" y="336">3  The app leaves the foreground mid-answer</text>
+  <text class="s" x="176" y="370">abort the request; the turn keeps running</text>
+  <path class="ln" d="M162 396 L518 396" marker-end="url(#a)"/>
+  <text class="m" x="176" y="388">POST /api/turns/:id/notify</text>
+  <text class="s" x="176" y="414">only when this device is registered for push</text>
+  <path class="ln" d="M520 396 L818 396" marker-end="url(#a)"/>
+  <text class="s" x="560" y="388">arm the turn for an hour</text>
+  <path class="ld" d="M518 436 L164 436" marker-end="url(#a)"/>
+  <text class="m" x="176" y="430">{ state: "armed" }</text>
+  <text class="s" x="340" y="430">or "finished"</text>
+
+  <!-- 4. Push -->
+  <rect class="band" x="40" y="456" width="1120" height="26" rx="6"/>
+  <text class="k" x="56" y="474">4  The answer ends on the server</text>
+  <text class="s" x="736" y="502">done; take the arming key,</text>
+  <text class="s" x="736" y="519">queue push.turn-ready</text>
+  <path class="ln" d="M822 548 L1068 548" marker-end="url(#a)"/>
+  <text class="s" x="840" y="540">FCM HTTP v1, one per device</text>
+  <path class="la" d="M1068 580 L164 580" marker-end="url(#b)"/>
+  <text class="k" x="176" y="574">"Your answer is ready." data: type turn, conversationId</text>
+  <text class="s" x="176" y="600">generic text unless the server sets PUSH_PREVIEW; a tap opens openchat://c/:id</text>
+
+  <!-- 5. Foreground -->
+  <rect class="band" x="40" y="618" width="1120" height="26" rx="6"/>
+  <text class="k" x="56" y="636">5  Back in the foreground</text>
+  <path class="ln" d="M162 676 L518 676" marker-end="url(#a)"/>
+  <text class="m" x="176" y="668">GET /api/turns/:id/events?after=lastSeq</text>
+  <path class="la" d="M518 704 L164 704" marker-end="url(#b)"/>
+  <text class="k" x="176" y="698">the rest of the events, then done</text>
+  <text class="s" x="176" y="726">events at or below lastSeq are skipped; then the chat, the list, usage and images are refetched</text>
+</svg>
